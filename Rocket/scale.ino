@@ -10,8 +10,8 @@ const int error_delay = 5000;
 const int LCD_delay = 100;
 
 // HX711 globals
-HX711 scale(A1, A0);                          
-const float calibration_factor = 102.58;          // калибровка!
+HX711 scale(A1, A0);
+const float calibration_factor = 102.58;
 float scale_result;
  
 // SD CARD globals
@@ -112,7 +112,7 @@ void wait_for_button()
 {
     while(1)
     {
-        if(digitalRead(buttonPin)==HIGH) //если кнопка нажата   
+        if(digitalRead(buttonPin)==HIGH) 
         {
             digitalWrite(PIN_BUTTON,!digitalRead(PIN_BUTTON));
             startloop();
@@ -190,7 +190,6 @@ void initLCD()
 
 void initScale()
 {
-    // включаем весы
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Initializing ");
@@ -209,7 +208,6 @@ void initScale()
 
 bool initSDCard()
 {
-    // включаем SD-карту
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Initializing ");
