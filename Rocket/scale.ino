@@ -20,12 +20,11 @@ File myFile;
 // LCD globals
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
-const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+const int rs = 9, en = 8, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 // RTC global
 RTC_DS1307 RTC;
-int RTC_compensation = -0.0094;
 DateTime now;
 DateTime check;
 
@@ -75,10 +74,6 @@ void loop()
             lcd.setCursor(0, 1);
             lcd.print(String(scale_result));
             counter=0;
-            // needed to avoid scaling-RTC error measurement
-            calibration_factor+=RTC_compensation;
-            scale.set_scale(calibration_factor);
-            Serial.println("Calibration factor updated to: " + String(calibration_factor));
         }
         else
         {
@@ -230,7 +225,7 @@ bool initSDCard()
     Serial.println("Opening IO file...");
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.println("Init done, ");
+    lcd.println("Init done        ");
     lcd.setCursor(0, 1);
     lcd.println("opening IO file...");
     myFile = SD.open("scale.txt", FILE_WRITE);
