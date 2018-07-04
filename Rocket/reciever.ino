@@ -8,9 +8,9 @@ const int buttonPin = 2;
 
 //delay const
 const int tone_delay = 500;
-const int sequence_delay = 0;
+const int sequence_delay = 500;
 const int ignition_delay = 3000;
-const int magic_word = 3735928559; // 0xDEADBEEF
+const int magic_word = 4242;
 
 //serial flow settings
 SerialFlow rd(9,10);
@@ -64,9 +64,9 @@ void finalCountdown()
 
 void checkButton()
 {
-    Serial.println("Button pressed");
     if (digitalRead(buttonPin)==HIGH)
     {
+        Serial.println("Button pressed");
         launch();
     }
 }
@@ -93,6 +93,7 @@ void checkPacket()
     {
         Serial.println("Recieved packet... decoding...");
         data = rd.getPacketValue(0);
+        Serial.println("Message is: " + String(data));
         if (data == magic_word)
         {
             Serial.println("Launch sequence obtained, starting...");
@@ -138,4 +139,4 @@ void initWiFi()
     Serial.println("Set wi-fi");
     rd.setPacketFormat(2, 1);
     rd.begin(0xF0F0F0F0E1LL,0xF0F0F0F0D2LL);    
-}
+}
