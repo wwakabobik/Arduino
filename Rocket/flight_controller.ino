@@ -12,12 +12,14 @@ const int standard_delay = 1000;
 const int big_delay = 120000;
 const int counting_delay = 500;
 const int flight_delay = 100;
+const int tone_delay = 500;
+const int rescue_delay = 5000;
 
 // GSM globals
 const int GSM_RX = 10, GSM_TX = 11;
 const int GSMBaudRate = 9600;
 SoftwareSerial gsm_connection(GSM_RX, GSM_TX);
-String phone_number = "+79162064409";
+String phone_number = "+71234567"; // obfuscate, change here before use!
 
 // GPS globals
 const int GPS_RX = 0, GPS_TX = 1;
@@ -43,11 +45,13 @@ File myFile;
 
 // button globals
 const int buttonPin = 7;
+const int buzzerPin = 4;
 
 void setup()
 {
     Serial.begin(SerialBaudRate);
     initButton();
+    initBuzzer();
     initBarometer();
     initGPS();
     initGyro();
@@ -121,6 +125,12 @@ void initBarometer()
         stop();
     }
     Serial.println("Barometer set");
+}
+
+void initBuzzer()
+{
+    pinMode(buzzerPin, INPUT);
+    Serial.println("Buzzer pin set");
 }
 
 /* Execution functions */
@@ -254,10 +264,31 @@ void stopFlight()
     sendSMS();
     delay(big_delay);
     sendSMS();
-    stop();
+    delay(big_delay);
+     rescueBeep();
 }
 
-stop()
+void rescueBeep()
+{
+    while(1)
+    {
+        beep(5000);
+        beep(5000);
+        beep(5000);
+        delay(rescue_delay);
+    }
+}
+
+void stop()
 {
     while(1);
+}
+
+/* buzzer functions */
+void beep(int ghz)
+{
+    tone(buzzerPin,ghz,tone_delay);
+    delay(tone_delay);
+    pinMode(buzzerPin, INPUT);
+    delay(tone_delay);
 }
