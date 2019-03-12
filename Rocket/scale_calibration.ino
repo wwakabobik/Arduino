@@ -1,10 +1,11 @@
-#include "HX711.h"
-HX711 scale(A1, A0);
+#include <HX711.h>
+HX711 scale;
 unsigned int weight_of_standard = 457; 
 
 void setup()
 {
     Serial.begin(9600);
+    scale.begin(A1, A0);
     Serial.println("Before tare: ");
     Serial.println(scale.get_units(10));
     scale.tare();
