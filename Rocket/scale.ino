@@ -1,7 +1,10 @@
-#include "HX711.h"
 #include <SD.h>
 #include <LiquidCrystal.h>
-#include "RTClib.h"
+// We'll use third-party libraries
+// https://github.com/bogde/HX711.git
+#include <HX711.h>
+//https://github.com/adafruit/RTClib.git
+#include <RTClib.h>
 
 //delay globals
 const int standard_delay = 1000;
@@ -10,8 +13,8 @@ const int error_delay = 5000;
 const int LCD_delay = 100;
 
 // HX711 globals
-HX711 scale(A1, A0);
-const float calibration_factor = 102.58;
+HX711 scale;
+const float calibration_factor = 102.58; // obtained by scale_calibration
 float scale_result;
  
 // SD CARD globals
@@ -19,7 +22,7 @@ File myFile;
 
 // LCD globals
 // initialize the library by associating any needed LCD interface pin
-// with the arduino pin number it is connected to
+// with the Arduino pin number it is connected to
 const int rs = 9, en = 8, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
@@ -109,7 +112,7 @@ void wait_for_button()
     {
         if(digitalRead(buttonPin)==HIGH) 
         {
-            digitalWrite(PIN_BUTTON,!digitalRead(PIN_BUTTON));
+            digitalWrite(buttonPin,!digitalRead(buttonPin));
             startloop();
         }
     }
@@ -191,6 +194,7 @@ void initScale()
     lcd.setCursor(0, 1);
     lcd.print("scale...");
     Serial.println("Init scale...");
+    scale.begin(A1, A0)
     delay(standard_delay);
     scale.set_scale();
     Serial.println("Resetting tare...");
