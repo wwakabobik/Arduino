@@ -1,55 +1,54 @@
 #include <SD.h>
 #include <Wire.h>
-#include <Adafruit_BMP085.h>
-#include "TinyGPS++.h"
-#include "SoftwareSerial.h"
+#include <SFE_BMP180.h>
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
 
 //Serial globals
-const int SerialBaudRate = 9600;
+const int BaudRate = 9600;
 
 // delay globals
 const int standard_delay = 1000;
-const int big_delay = 120000;
-const int counting_delay = 500;
-const int flight_delay = 100;
+const int big_delay = 30000;
 const int tone_delay = 500;
-const int rescue_delay = 5000;
+const int rescue_delay = 3000;
+const unsigned long flight_delay = 120000;
 
 // GSM globals
 const int GSM_RX = 10, GSM_TX = 11;
-const int GSMBaudRate = 9600;
 SoftwareSerial gsm_connection(GSM_RX, GSM_TX);
-String phone_number = "+71234567"; // obfuscate, change here before use!
+const String phone_number = "+71234567"; // obfuscate, change here before use!
 
 // GPS globals
 const int GPS_RX = 0, GPS_TX = 1;
-const int GPSBaudRate = 37600;
 SoftwareSerial gps_connection(GPS_RX, GPS_TX);
-TinyGPS gps;
-
+TinyGPSPlus gps;
 
 // Gyro globals
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 
 // Barometer globals
-Adafruit_BMP085 bmp;
-const long normal_pressure = 99592; // Moscow - 747 mm Hg
-long pressure;
-long temperature;
-long altitude;
+SFE_BMP180 barometer_data;
+double normal_pressure = 0;
 
 // SD globals
-String filename = "flight_data.txt";
+const String filename = "flight_data.txt";
 File myFile;
 
 // button globals
-const int buttonPin = 7;
-const int buzzerPin = 4;
+const int PIN_BUTTON = 7;
+const int PIN_BUZZER = 6;
+
+// buzzer globals;
+const int frequency = 5000;
+
+// landing globals
+unsigned long start_time;
 
 void setup()
 {
-    Serial.begin(SerialBaudRate);
+    Serial.begin(BaudRate);
     initButton();
     initBuzzer();
     initBarometer();
@@ -57,25 +56,30 @@ void setup()
     initGyro();
     initSDCard();
     delay(big_delay); // we need to assure, that connection to GPS established
-    writeGPSTS();
+    beep(frequency); // make beep, mark init completed
     waitForButton();
+    start_time = millis();
+    beep(frequency); // make beep, we're ready to flight
 }
+
 
 /* Init functions */
 
 void initGSM()
 {
-    gsm_connection.begin(GSMBaudRate);
+    gsm_connection.begin(BaudRate);
     Serial.println("GSM Start");
     delay(standard_delay);
 }
 
+
 void initGPS()
 {
-    gps_connection.begin(GPSBaudRate);
+    gps_connection.begin(BaudRate);
     Serial.println("GPS Start");
     delay(standard_delay);
 }
+
 
 void initGyro()
 {
@@ -85,6 +89,7 @@ void initGyro()
     Wire.endTransmission(true);
     Serial.println("Gyro start");
 }
+
 
 bool initSDCard()
 {
@@ -111,27 +116,28 @@ bool initSDCard()
     }
 }
 
+
 void initButton()
 {
-    pinMode(buttonPin, INPUT); 
+    pinMode(PIN_BUTTON, INPUT); 
     Serial.println("Button pin set");
 }
 
+
 void initBarometer()
 {
-    if (!bmp.begin()) 
-    {
-        Serial.println("No pressure sensor found");
-        stop();
-    }
+    barometer_data.begin();
+    normal_pressure = getRawBarometerData(0);
     Serial.println("Barometer set");
 }
 
+
 void initBuzzer()
 {
-    pinMode(buzzerPin, INPUT);
+    pinMode(PIN_BUZZER, INPUT);
     Serial.println("Buzzer pin set");
 }
+
 
 /* Execution functions */
 
@@ -162,18 +168,31 @@ void sendSMS()
     Serial.println("SMS sent");
 }
 
+
 void writeFlightData()
 {
-    String string_to_store = String(millis()) + "," + getGPSTimeStamp() + "," + getGPSData() + "," + getGyroData() + "," + getBarometerData();
-    myFile.println(string_to_store);
-    Serial.println(string_to_store);
+    Serial.print(millis());
+    Serial.print(",");
+    myFile.print(millis());
+    myFile.print(",");
+    Serial.print(getGPSTimeStamp());
+    Serial.print(",");
+    myFile.print(getGPSTimeStamp());
+    myFile.print(",");
+    Serial.print(getGPSData());
+    Serial.print(",");
+    myFile.print(getGPSData());
+    myFile.print(",");
+    Serial.print(getGyroData());
+    Serial.print(",");
+    myFile.print(getGyroData());
+    myFile.print(",");
+    Serial.print(getBarometerData());
+    Serial.print("\n");
+    myFile.print(getBarometerData());
+    myFile.print("\n");
 }
 
-void writeGPSTS()
-{
-    myfile.println("\nSTART SEQUENCE BEGIN\n");
-    myFile.println(getGPSTimeStamp);
-}
 
 String getGPSTimeStamp()
 {
@@ -181,11 +200,13 @@ String getGPSTimeStamp()
     return retVal;
 }
 
+
 String getGPSData()
 {
     String retVal = String(gps.location.lat()) + "," + String(gps.location.lng()) + "," + String(gps.altitude.meters()) + "," + String(gps.speed.kmph()) + "," + String(gps.course.deg()) + "," + String(gps.hdop.hdop());
     return retVal;
 }
+
 
 String getGyroData()
 {
@@ -204,56 +225,83 @@ String getGyroData()
     return retVal;
 }
 
+
 String getBarometerData()
-{
-    String retVal = String(bmp.readPressure()) + "," + String(bmp.readAltitude(normal_pressure)) + "," + String(bmp.readTemperature());
+{   
+    String retVal = String(getRawBarometerData(0)) + "," + String(getRawBarometerData(1)) + "," + String(getRawBarometerData(2));
+    return retVal;
 }
+
+double getRawBarometerData(int type)
+{
+    char status;
+    double T, P;
+
+    status = barometer_data.startTemperature();
+    if (status != 0)
+    {
+        delay(status);
+        status = barometer_data.getTemperature(T);
+        if (type == 1)
+        {
+            return T;
+        }
+        if (status != 0)
+        {
+            status = barometer_data.startPressure(3);
+            if (status != 0)
+            {
+                delay(status);
+                status = barometer_data.getPressure(P, T);
+                if (status != 0)
+                {
+                    if (type == 0)
+                    {
+                        return(P);
+                    }
+                    else
+                    {
+                        return barometer_data.altitude(P, normal_pressure);
+                    }
+                }
+            }
+        }
+    } 
+}
+
 
 /* Loop functions */
 void waitForButton()
 {
     while(1)
     {
-        if(digitalRead(buttonPin)==HIGH) 
+        if(digitalRead(PIN_BUTTON)==HIGH) 
         {
             digitalWrite(PIN_BUTTON,!digitalRead(PIN_BUTTON));
             Serial.println("Button pressed, start flight sequence");
             delay(big_delay);
-            loop();
+            break;
         }
     }
 }
 
+
 void loop()
 {
-    int counter = 0;
-    bool flag = false;
-    while(1)
+    while(gps_connection.available() > 0) {
+        char temp = gps_connection.read();
+        //Serial.write(temp); // debug
+        gps.encode(temp);
+    }
+    
+    writeFlightData();
+
+    if (millis() - start_time > flight_delay)
     {
-        writeFlightData();
-        // we need to assure that we're landed, re-check about hundred of ticks
-        if (flag == true)
-        {
-            if (AcX == 0 && AcY == 0 && AcZ == 0)
-            {
-                counter++;
-            }
-            if (counter > counting_delay)
-            {
-                stopFlight();
-            }
-        }
-        // we need to assure that we're in flight, re-check about hundred of ticks
-        else
-        {
-            if (counter < -flight_delay)
-            {
-                flag = true;
-                counter = 0;
-            }
-        }
+        stopFlight();
     }
 }
+
 
 void stopFlight()
 {
@@ -265,30 +313,32 @@ void stopFlight()
     delay(big_delay);
     sendSMS();
     delay(big_delay);
-     rescueBeep();
-}
-
-void rescueBeep()
-{
-    while(1)
-    {
-        beep(5000);
-        beep(5000);
-        beep(5000);
-        delay(rescue_delay);
-    }
+    rescueBeep();
 }
 
 void stop()
 {
-    while(1);
+    while(1)
+    {
+        beep(frequency);
+        delay(tone_delay);
+    }
 }
 
 /* buzzer functions */
+void rescueBeep()
+{
+    while(1)
+    {
+        beep(frequency);
+        delay(rescue_delay);
+    }
+}
+
 void beep(int ghz)
 {
-    tone(buzzerPin,ghz,tone_delay);
+    tone(PIN_BUZZER, ghz, tone_delay);
     delay(tone_delay);
-    pinMode(buzzerPin, INPUT);
+    pinMode(PIN_BUZZER, INPUT);
     delay(tone_delay);
 }
