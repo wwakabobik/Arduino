@@ -31,9 +31,6 @@ RTC_DS1307 RTC;
 DateTime now;
 DateTime check;
 
-// button global
-const int buttonPin = 6;
-
 // output globals 
 int counter;
 String message;
@@ -46,7 +43,7 @@ void setup()
     Serial.begin(9600);
 
     initRTC();
-    initButton();
+    initLCD();
     initScale();
     result = initSDCard();
     
@@ -54,68 +51,51 @@ void setup()
     {
         stop();
     }
-    else
-    {
-        wait_for_button();
-    }
+    startloop();
+    check = RTC.now();
 }
 
 void loop() 
 {
-    while(1)
+    // get scale data
+    scale_result=scale.get_units(1);
+    // get current time
+    check = RTC.now();
+    // update LED not so frequent as measure to avoid blinking
+    if (counter%LCD_delay==0)
     {
-        // get scale data
-        scale_result=scale.get_units(1);
-        // get current time
-        check = RTC.now();
-        // update LED not so frequent as measure to avoid blinking
-        if (counter%LCD_delay==0)
-        {
-            lcd.clear();
-            lcd.setCursor(14, 0);
-            lcd.print(String((check.unixtime()-now.unixtime())));
-            lcd.setCursor(0, 1);
-            lcd.print(String(scale_result));
-            counter=0;
-        }
-        else
-        {
-            counter++;
-        }
-        //generate output
-        message = String(millis()) + "," + String(scale_result) + "," + String(check.unixtime()) +"," + String(check.unixtime()-now.unixtime());
-        Serial.println(message);
-        myFile.println(message);
-        // check measurement timeout, if so, close file
-        if ((check.unixtime()-now.unixtime())>60)
-        {
-            myFile.close();
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("Measurement stop!");
-            Serial.println("Measurement stop!");
-            delay(error_delay);
-            lcd.clear();
-            return;
-        }
+       lcd.clear();
+       lcd.setCursor(14, 0);
+       lcd.print(String((check.unixtime()-now.unixtime())));
+       lcd.setCursor(0, 1);
+       lcd.print(String(scale_result));
+       counter=0;
+    }
+    else
+    {
+       counter++;
+    }
+    //generate output
+    message = String(millis()) + "," + String(scale_result) + "," + String(check.unixtime()) +"," + String(check.unixtime()-now.unixtime());
+    Serial.println(message);
+    myFile.println(message);
+    // check measurement timeout, if so, close file
+    if ((check.unixtime()-now.unixtime())>60)
+    {
+        myFile.close();
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Measurement stop!");
+        Serial.println("Measurement stop!");
+        delay(error_delay);
+        lcd.clear();
+        stop();
     }
 }
 
 void stop()
 {
     while(1);
-}
-
-void wait_for_button()
-{
-    while(1)
-    {
-        if(digitalRead(buttonPin)==HIGH) 
-        {
-            digitalWrite(buttonPin,!digitalRead(buttonPin));
-            startloop();
-        }
-    }
 }
 
 void startloop()
@@ -127,31 +107,30 @@ void startloop()
     {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Start measure!");
+        lcd.print("Start measure!   ");
+        Serial.println("Start measure!");
         delay(error_delay);    
         myFile.println();
         myFile.println(getTimeStamp());
-        loop();
     }
     else
     {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Can't open file!");
+        lcd.print("Can't open file! ");
         Serial.println("Can't open file!");
         delay(error_delay);
         lcd.clear();
         //pinMode(backLight, OUTPUT);
         //digitalWrite(backLight, LOW); 
         stop();
-        return;
     }
 }
 
 String getTimeStamp()
 {
-  now = RTC.now();
-  return String(now.year(), DEC) + "/" + String(now.month(), DEC) + "/" + String(now.day(), DEC) + " " + String(now.hour(), DEC) + ":" + String(now.minute(), DEC);
+    now = RTC.now();
+    return String(now.year(), DEC) + "/" + String(now.month(), DEC) + "/" + String(now.day(), DEC) + " " + String(now.hour(), DEC) + ":" + String(now.minute(), DEC);
 }
 
 void initRTC()
@@ -166,18 +145,13 @@ void initRTC()
     }    
 }
 
-void initButton()
-{
-    pinMode(buttonPin, INPUT); // set button pin
-}
-
 void initLCD()
 {
     lcd.begin(16, 2);
     // Print a message to the LCD
     lcd.setCursor(0, 0);
     lcd.clear();
-    lcd.print("Hello!");
+    lcd.print("Hello!           ");
     Serial.println("Hello!");
     delay(standard_delay);
     Serial.println(getTimeStamp());
@@ -190,11 +164,11 @@ void initScale()
 {
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Initializing ");
+    lcd.print("Initializing     ");
     lcd.setCursor(0, 1);
-    lcd.print("scale...");
+    lcd.print("scale...         ");
     Serial.println("Init scale...");
-    scale.begin(A1, A0)
+    scale.begin(A1, A0);
     delay(standard_delay);
     scale.set_scale();
     Serial.println("Resetting tare...");
@@ -209,16 +183,16 @@ bool initSDCard()
 {
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Initializing ");
+    lcd.print("Initializing     ");
     lcd.setCursor(0, 1);
-    lcd.print("SD card...");
+    lcd.print("SD card...       ");
     Serial.println("Initializing SD card...");
     delay(standard_delay);
     if (!SD.begin(10)) 
     {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Init SD failed!");
+        lcd.print("Init SD failed! ");
         Serial.println("Init SD failed!");
         delay(error_delay);
         lcd.clear();
@@ -229,7 +203,7 @@ bool initSDCard()
     Serial.println("Opening IO file...");
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.println("Init done        ");
+    lcd.println("Init done         ");
     lcd.setCursor(0, 1);
     lcd.println("opening IO file...");
     myFile = SD.open("scale.txt", FILE_WRITE);
@@ -240,9 +214,9 @@ bool initSDCard()
         myFile.close();
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Init OK. ");
+        lcd.print("Init OK.          ");
         lcd.setCursor(0, 1);
-        lcd.print("Scale ready!");
+        lcd.print("Scale ready!      ");
         Serial.println("Init OK. Scale ready!");
         delay(standard_delay);
         return false;
@@ -251,7 +225,7 @@ bool initSDCard()
     {
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Can't open file!");
+        lcd.print("Can't open file!  ");
         Serial.println("Can't open file!");
         delay(error_delay);
         lcd.clear();
@@ -260,3 +234,4 @@ bool initSDCard()
         return true;
     }
 }
+
