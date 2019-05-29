@@ -1,3 +1,31 @@
+/* ***************************************************************************
+ * This sketch contains flight controller logic for candy rockets.           *
+ *                                                                           *
+ * Sketch uses Arduino Nano controller, and it contains limited amount of    *
+ * RAM. Due to that - to achieve stability - at least 20% of RAM should be   *
+ * free and debug serial output is commented-out in this sketch.             *
+ *                                                                           *
+ * Flight controller contains:                                               *
+ *    - Arduino Nano v3 (CH340g), MPU-6050 6-axis gyroscope, piezo buzzer,   *
+ *      BMP180 barometer/thermometer, SD card module, GY-NEO6MV3 GPS,        *
+ *      WAVGAT SIM900A GSM module, 7805 stabilizer, LED, 9v battery.         *
+ *                                                                           *
+ * Third-party libraries:                                                    *
+ *    - https://github.com/sparkfun/BMP180_Breakout                          *
+ *    - https://github.com/mikalhart/TinyGPS                                 *
+ *                                                                           *
+ * Logic:                                                                    *
+ *    1) Init all modules in except of GSM;                                  *
+ *    2) Wait until GPS starts and connection established;                   *
+ *    3) Loop while flight, write collected data from barometer/thermometer, *
+ *       GPS data (datetime, position), gyro data to SD card;                *
+ *    4) Stop loop, save file;                                               *
+ *    5) Init GSM and send SMS with GPS position three times;                *
+ *    6) Beep continously until vessel will be recovered.                    *
+ *                                                                           *
+ * Sketch written by Iliya Vereshchagin 2018.                                *
+ *****************************************************************************/
+
 #include <SD.h>
 #include <Wire.h>
 #include <SFE_BMP180.h>
@@ -8,16 +36,14 @@
 const int BaudRate = 9600;
 
 // delay globals
-const int standard_delay = 1000;
+const int standard_delay = 500;
 const int big_delay = 30000;
-const int tone_delay = 500;
-const int rescue_delay = 3000;
 const unsigned long flight_delay = 120000;
 
 // GSM globals
 const int GSM_RX = 10, GSM_TX = 11;
 SoftwareSerial gsm_connection(GSM_RX, GSM_TX);
-const String phone_number = "+71234567"; // obfuscate, change here before use!
+const String phone_number = "+71234567890"; // obfuscate, change here before use!
 
 // GPS globals
 const int GPS_RX = 0, GPS_TX = 1;
@@ -33,15 +59,16 @@ SFE_BMP180 barometer_data;
 double normal_pressure = 0;
 
 // SD globals
-const String filename = "flight_data.txt";
+const String filename = "FDATA.TXT";
+const int SD_CS_PIN = 5;
 File myFile;
 
-// button globals
-const int PIN_BUTTON = 7;
-const int PIN_BUZZER = 6;
-
 // buzzer globals;
+const int PIN_BUZZER = 6;
 const int frequency = 5000;
+
+// led globals
+const int PIN_LED = 4;
 
 // landing globals
 unsigned long start_time;
@@ -49,15 +76,15 @@ unsigned long start_time;
 void setup()
 {
     Serial.begin(BaudRate);
-    initButton();
     initBuzzer();
     initBarometer();
     initGPS();
     initGyro();
     initSDCard();
-    delay(big_delay); // we need to assure, that connection to GPS established
+    setLED(true);
+    delay(flight_delay); // we need to assure, that connection to GPS established
     beep(frequency); // make beep, mark init completed
-    waitForButton();
+    setLED(false);
     start_time = millis();
     beep(frequency); // make beep, we're ready to flight
 }
@@ -68,7 +95,7 @@ void setup()
 void initGSM()
 {
     gsm_connection.begin(BaudRate);
-    Serial.println("GSM Start");
+    //Serial.println("GSM Start");
     delay(standard_delay);
 }
 
@@ -76,7 +103,7 @@ void initGSM()
 void initGPS()
 {
     gps_connection.begin(BaudRate);
-    Serial.println("GPS Start");
+    //Serial.println("GPS Start");
     delay(standard_delay);
 }
 
@@ -87,40 +114,33 @@ void initGyro()
     Wire.write(0x6B);  // PWR_MGMT_1 register
     Wire.write(0);     // set to zero (wakes up the MPU-6050)
     Wire.endTransmission(true);
-    Serial.println("Gyro start");
+    //Serial.println("Gyro start");
 }
 
 
 bool initSDCard()
 {
-    Serial.println("Initializing SD card...");
+    //Serial.println("Initializing SD card...");
     delay(standard_delay);
-    if (!SD.begin(10)) 
+    if (!SD.begin(SD_CS_PIN)) 
     {
-        Serial.println("Init SD failed!");
+        //Serial.println("Init SD failed!");
         stop();
     }
-    Serial.println("Opening IO file...");
+    //Serial.println("Opening IO file...");
     myFile = SD.open(filename, FILE_WRITE);
     delay(standard_delay);
     // if the file opened, return false
     if (myFile)
     {
-        Serial.println("SD ready");
+        //Serial.println("SD ready");
         delay(standard_delay);
     }
     else
     {
-        Serial.println("Can't open file!");
+        //Serial.println("Can't open file!");
         stop();
     }
-}
-
-
-void initButton()
-{
-    pinMode(PIN_BUTTON, INPUT); 
-    Serial.println("Button pin set");
 }
 
 
@@ -128,23 +148,34 @@ void initBarometer()
 {
     barometer_data.begin();
     normal_pressure = getRawBarometerData(0);
-    Serial.println("Barometer set");
+    //Serial.println("Barometer set");
 }
 
 
 void initBuzzer()
 {
     pinMode(PIN_BUZZER, INPUT);
-    Serial.println("Buzzer pin set");
+    //Serial.println("Buzzer pin set");
 }
 
 
 /* Execution functions */
 
+void setLED(bool status)
+{
+    if (status)
+    {
+        digitalWrite(PIN_LED, HIGH);
+    }
+    else
+    {
+        digitalWrite(PIN_LED, LOW);    
+    } 
+}
+
 void sendSMS()
 {
-    initGSM();
-    Serial.println("Sending SMS...");
+    //Serial.println("Sending SMS...");
     delay(standard_delay);
     gsm_connection.print("\r");
     delay(standard_delay);
@@ -152,8 +183,8 @@ void sendSMS()
     delay(standard_delay);
     gsm_connection.print("AT+CMGS=\"+" + phone_number + "\"\r");
     delay(standard_delay);
-    gsm_connection.print("I'm landed. Please recover me in ");
-    gsm_connection.print("www.google.com/maps/place/");
+    //gsm_connection.print("I'm landed. Please recover me in ");
+    //gsm_connection.print("www.google.com/maps/place/");
     gsm_connection.print(gps.location.lat(), 6);
     gsm_connection.print(",");
     gsm_connection.print(gps.location.lng(), 6);
@@ -165,30 +196,30 @@ void sendSMS()
     gsm_connection.print(0x0D);
     gsm_connection.print(0x0A);
     delay(standard_delay);
-    Serial.println("SMS sent");
+    //Serial.println("SMS sent");
 }
 
 
 void writeFlightData()
 {
-    Serial.print(millis());
-    Serial.print(",");
+    //Serial.print(millis());
+    //Serial.print(",");
     myFile.print(millis());
     myFile.print(",");
-    Serial.print(getGPSTimeStamp());
-    Serial.print(",");
+    //Serial.print(getGPSTimeStamp());
+    //Serial.print(",");
     myFile.print(getGPSTimeStamp());
     myFile.print(",");
-    Serial.print(getGPSData());
-    Serial.print(",");
+    //Serial.print(getGPSData());
+    //Serial.print(",");
     myFile.print(getGPSData());
     myFile.print(",");
-    Serial.print(getGyroData());
-    Serial.print(",");
+    //Serial.print(getGyroData());
+    //Serial.print(",");
     myFile.print(getGyroData());
     myFile.print(",");
-    Serial.print(getBarometerData());
-    Serial.print("\n");
+    //Serial.print(getBarometerData());
+    //Serial.print("\n");
     myFile.print(getBarometerData());
     myFile.print("\n");
 }
@@ -270,22 +301,6 @@ double getRawBarometerData(int type)
 }
 
 
-/* Loop functions */
-void waitForButton()
-{
-    while(1)
-    {
-        if(digitalRead(PIN_BUTTON)==HIGH) 
-        {
-            digitalWrite(PIN_BUTTON,!digitalRead(PIN_BUTTON));
-            Serial.println("Button pressed, start flight sequence");
-            delay(big_delay);
-            break;
-        }
-    }
-}
-
-
 void loop()
 {
     while(gps_connection.available() > 0) {
@@ -305,14 +320,17 @@ void loop()
 
 void stopFlight()
 {
-    Serial.print("Landed, saving data and call for recovery");
+    //Serial.print("Landed, saving data and call for recovery");
     myFile.close();
+    setLED(true);
+    initGSM();
     sendSMS();
     delay(big_delay);
     sendSMS();
     delay(big_delay);
     sendSMS();
     delay(big_delay);
+    setLED(false);
     rescueBeep();
 }
 
@@ -321,7 +339,7 @@ void stop()
     while(1)
     {
         beep(frequency);
-        delay(tone_delay);
+        delay(standard_delay);
     }
 }
 
@@ -331,14 +349,15 @@ void rescueBeep()
     while(1)
     {
         beep(frequency);
-        delay(rescue_delay);
+        delay(standard_delay);
     }
 }
 
 void beep(int ghz)
 {
-    tone(PIN_BUZZER, ghz, tone_delay);
-    delay(tone_delay);
+    tone(PIN_BUZZER, ghz, standard_delay);
+    delay(standard_delay);
     pinMode(PIN_BUZZER, INPUT);
-    delay(tone_delay);
+    delay(standard_delay);
 }
+
