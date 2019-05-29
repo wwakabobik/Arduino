@@ -1,9 +1,24 @@
+/* ***************************************************************************
+ * This sketch contains scale logic for candy rocket engine test stand.      *
+ *                                                                           *
+ * Sketch uses Arduino UNO controller, data logger shield, LCD 1602 and      *
+ * HX711 module, to measure high-power thrust I use 20kg tensiometer.        *
+ *                                                                           *
+ * Third-party libraries:                                                    *
+ *    - https://github.com/bogde/HX711.git                                   *
+ *    - https://github.com/adafruit/RTClib.git                               *
+ *                                                                           *
+ * Logic:                                                                    *
+ *    1) Init all modules (HX711, RTC, SD card)                              *
+ *    2) Log meaurement data to SD card every tick (approx exery 0,1 sec)    *
+ *    3) Stop measurement                                                    *
+ *                                                                           *
+ * Sketch written by Iliya Vereshchagin 2018.                                *
+ *****************************************************************************/
+
 #include <SD.h>
 #include <LiquidCrystal.h>
-// We'll use third-party libraries
-// https://github.com/bogde/HX711.git
 #include <HX711.h>
-//https://github.com/adafruit/RTClib.git
 #include <RTClib.h>
 
 //delay globals

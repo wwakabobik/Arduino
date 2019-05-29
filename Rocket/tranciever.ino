@@ -1,3 +1,20 @@
+/* ***************************************************************************
+ * This sketch contains logic of tranciever for ignitor                      *
+ *                                                                           *
+ * Sketch uses Arduino Nano controller, NRF24L01 module                      *
+ *                                                                           *
+ * Third-party libraries:                                                    *
+ *  - https://github.com/oevsegneev/arduino-dev/tree/master/libs/SerialFlow  *
+ *                                                                           *
+ * Logic:                                                                    *
+ *    1) Init LED, button and Wi-fi                                                  *
+ *    2) Wait for button press                                               *
+ *    3) If button is pressed, send maic keyword three times                 *
+ *    4) Delay while ignition initiated                                      *
+ *                                                                           *
+ * Sketch written by Iliya Vereshchagin 2018.                                *
+ *****************************************************************************/
+
 #include <SerialFlow.h>
 
 // pin const

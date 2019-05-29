@@ -1,3 +1,21 @@
+/* ***************************************************************************
+ * This sketch contains logic of reciever for ignitor                        *
+ *                                                                           *
+ * Sketch uses Arduino Nano controller, NRF24L01 module, piezo buzzer,       *
+ * relay module and 2x18650                                                  *
+ *                                                                           *
+ * Third-party libraries:                                                    *
+ *  - https://github.com/oevsegneev/arduino-dev/tree/master/libs/SerialFlow  *
+ *                                                                           *
+ * Logic:                                                                    *
+ *    1) Init LED, button and Wi-fi                                          *
+ *    2) Wait for button press or recieving magic keyword                    *
+ *    3) If button pressed or magic keyword activated, start 5-sec countdown *
+ *    4) Ignite                                                              *
+ *                                                                           *
+ * Sketch written by Iliya Vereshchagin 2018.                                *
+ *****************************************************************************/
+
 #include <SerialFlow.h>
 
 //pin consts

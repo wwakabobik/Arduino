@@ -1,6 +1,22 @@
+/* ***************************************************************************
+ * This sketch contains obtaining scale calibration factor for HX711         *
+ *                                                                           *
+ * Sketch uses Arduino UNO controller,  HX711 module, 20kg tensiometer.      *
+ *                                                                           *
+ * Third-party libraries:                                                    *
+ *    - https://github.com/bogde/HX711.git                                   *
+ *                                                                           *
+ * Logic:                                                                    *
+ *    1) Measure weight of standard                                          *
+ *    2) Calculate and display proposed calibration factor for scale         *
+ *                                                                           *
+ * Sketch written by Iliya Vereshchagin 2018.                                *
+ *****************************************************************************/
+
 #include <HX711.h>
+
 HX711 scale;
-unsigned int weight_of_standard = 457; 
+unsigned int weight_of_standard = 457;  // set your own standard ethalon
 
 void setup()
 {
@@ -33,4 +49,3 @@ void correction()
     scale.set_scale(calibration_factor);
     delay(10000);
 }
-
