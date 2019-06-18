@@ -8,7 +8,8 @@
  * Flight controller contains:                                               *
  *    - Arduino Nano v3 (CH340g), MPU-6050 6-axis gyroscope, piezo buzzer,   *
  *      BMP180 barometer/thermometer, SD card module, GY-NEO6MV3 GPS,        *
- *      WAVGAT SIM900A GSM module, 7805 stabilizer, LED, 9v battery.         *
+ *      WAVGAT SIM900A GSM module, 7805 stabilizer, LED, SX1278 (Ra-02)      *
+ *      LoRa module as alternative GSM module, to 9v battery.                *
  *                                                                           *
  * Third-party libraries:                                                    *
  *    - https://github.com/sparkfun/BMP180_Breakout                          *
@@ -21,7 +22,8 @@
  *       GPS data (datetime, position), gyro data to SD card;                *
  *    4) Stop loop, save file;                                               *
  *    5) Init GSM and send SMS with GPS position three times;                *
- *    6) Beep continously until vessel will be recovered.                    *
+ *    6) Beep continously until vessel will be recovered, send GPS data      *              
+ *       via LoRa                                                            *
  *                                                                           *
  * Sketch written by Iliya Vereshchagin 2018.                                *
  *****************************************************************************/
@@ -31,19 +33,22 @@
 #include <SFE_BMP180.h>
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
+#include <SPI.h>
+#include <LoRa.h>
 
 //Serial globals
 const int BaudRate = 9600;
 
 // delay globals
 const int standard_delay = 500;
-const int big_delay = 30000;
+//const int big_delay = 30000;
 const unsigned long flight_delay = 120000;
 
+/* commented-out because GSM is not used 
 // GSM globals
 const int GSM_RX = 10, GSM_TX = 11;
 SoftwareSerial gsm_connection(GSM_RX, GSM_TX);
-const String phone_number = "+71234567890"; // obfuscate, change here before use!
+const String phone_number = "+71234567890"; // obfuscate, change here before use! */
 
 // GPS globals
 const int GPS_RX = 0, GPS_TX = 1;
@@ -80,11 +85,15 @@ void setup()
     initBarometer();
     initGPS();
     initGyro();
+    initLoRa();
     initSDCard();
     setLED(true);
     delay(flight_delay); // we need to assure, that connection to GPS established
     beep(frequency); // make beep, mark init completed
     setLED(false);
+    LoRa.beginPacket();
+    LoRa.print("Ready to flight");
+    LoRa.endPacket();
     start_time = millis();
     beep(frequency); // make beep, we're ready to flight
 }
@@ -92,12 +101,13 @@ void setup()
 
 /* Init functions */
 
+/* commented-out due to GSM is not used
 void initGSM()
 {
     gsm_connection.begin(BaudRate);
-    //Serial.println("GSM Start");
+    Serial.println("GSM Start");
     delay(standard_delay);
-}
+} */
 
 
 void initGPS()
@@ -159,6 +169,18 @@ void initBuzzer()
 }
 
 
+void initLoRa()
+{
+    if (!LoRa.begin(433E6))
+    {
+      //Serial.println("Starting LoRa failed!");
+      stop();
+    }
+    LoRa.setTxPower(20);
+    //Serial.println("LoRa started!");  
+}
+
+
 /* Execution functions */
 
 void setLED(bool status)
@@ -173,9 +195,12 @@ void setLED(bool status)
     } 
 }
 
+
+/* commented-out due to GSM is not used
 void sendSMS()
 {
-    //Serial.println("Sending SMS...");
+    // commented-out due to GSM is not used
+    /* //Serial.println("Sending SMS...");
     delay(standard_delay);
     gsm_connection.print("\r");
     delay(standard_delay);
@@ -196,32 +221,32 @@ void sendSMS()
     gsm_connection.print(0x0D);
     gsm_connection.print(0x0A);
     delay(standard_delay);
-    //Serial.println("SMS sent");
-}
+    //Serial.println("SMS sent"); 
+} */
 
 
 void writeFlightData()
 {
-    //Serial.print(millis());
-    //Serial.print(",");
     myFile.print(millis());
+    //Serial.print(millis());
     myFile.print(",");
-    //Serial.print(getGPSTimeStamp());
     //Serial.print(",");
     myFile.print(getGPSTimeStamp());
+    //Serial.print(getGPSTimeStamp());
     myFile.print(",");
-    //Serial.print(getGPSData());
     //Serial.print(",");
     myFile.print(getGPSData());
+    //Serial.print(getGPSData());
     myFile.print(",");
-    //Serial.print(getGyroData());
     //Serial.print(",");
     myFile.print(getGyroData());
+    //Serial.print(getGyroData());
     myFile.print(",");
-    //Serial.print(getBarometerData());
-    //Serial.print("\n");
+    //Serial.print(",");
     myFile.print(getBarometerData());
+    //Serial.print(getBarometerData());
     myFile.print("\n");
+    //Serial.print("\n");
 }
 
 
@@ -262,6 +287,7 @@ String getBarometerData()
     String retVal = String(getRawBarometerData(0)) + "," + String(getRawBarometerData(1)) + "," + String(getRawBarometerData(2));
     return retVal;
 }
+
 
 double getRawBarometerData(int type)
 {
@@ -313,7 +339,12 @@ void loop()
 
     if (millis() - start_time > flight_delay)
     {
-        stopFlight();
+        // close file if it's opened
+        if (myFile)
+        {
+            stopFlight();
+        }
+        rescueBeep();
     }
 }
 
@@ -322,6 +353,7 @@ void stopFlight()
 {
     //Serial.print("Landed, saving data and call for recovery");
     myFile.close();
+    /* commented-out due to GSM is not used
     setLED(true);
     initGSM();
     sendSMS();
@@ -330,9 +362,9 @@ void stopFlight()
     delay(big_delay);
     sendSMS();
     delay(big_delay);
-    setLED(false);
-    rescueBeep();
+    setLED(false); */
 }
+
 
 void stop()
 {
@@ -343,15 +375,17 @@ void stop()
     }
 }
 
+
 /* buzzer functions */
 void rescueBeep()
 {
-    while(1)
-    {
         beep(frequency);
         delay(standard_delay);
-    }
+        LoRa.beginPacket();
+        LoRa.print(getGPSData());
+        LoRa.endPacket();
 }
+
 
 void beep(int ghz)
 {

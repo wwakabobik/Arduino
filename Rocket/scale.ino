@@ -101,7 +101,7 @@ void loop()
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Measurement stop!");
-        Serial.println("Measurement stop!");
+        //Serial.println("Measurement stop!");
         delay(error_delay);
         lcd.clear();
         stop();
@@ -123,7 +123,7 @@ void startloop()
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Start measure!   ");
-        Serial.println("Start measure!");
+        //Serial.println("Start measure!");
         delay(error_delay);    
         myFile.println();
         myFile.println(getTimeStamp());
@@ -167,7 +167,7 @@ void initLCD()
     lcd.setCursor(0, 0);
     lcd.clear();
     lcd.print("Hello!           ");
-    Serial.println("Hello!");
+    //Serial.println("Hello!");
     delay(standard_delay);
     Serial.println(getTimeStamp());
     lcd.setCursor(0, 1);
@@ -182,14 +182,14 @@ void initScale()
     lcd.print("Initializing     ");
     lcd.setCursor(0, 1);
     lcd.print("scale...         ");
-    Serial.println("Init scale...");
+    //Serial.println("Init scale...");
     scale.begin(A1, A0);
     delay(standard_delay);
     scale.set_scale();
-    Serial.println("Resetting tare...");
+    //Serial.println("Resetting tare...");
     delay(short_delay);
     scale.tare(); // reset to 0
-    Serial.println("Set calibration... factor " + String(calibration_factor));
+    //Serial.println("Set calibration... factor " + String(calibration_factor));
     delay(short_delay);
     scale.set_scale(calibration_factor); // apply calibration
 }
@@ -201,7 +201,7 @@ bool initSDCard()
     lcd.print("Initializing     ");
     lcd.setCursor(0, 1);
     lcd.print("SD card...       ");
-    Serial.println("Initializing SD card...");
+    //Serial.println("Initializing SD card...");
     delay(standard_delay);
     if (!SD.begin(10)) 
     {
@@ -215,7 +215,7 @@ bool initSDCard()
         //digitalWrite(backLight, LOW); 
         return true;
     }
-    Serial.println("Opening IO file...");
+    //Serial.println("Opening IO file...");
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.println("Init done         ");
@@ -232,7 +232,7 @@ bool initSDCard()
         lcd.print("Init OK.          ");
         lcd.setCursor(0, 1);
         lcd.print("Scale ready!      ");
-        Serial.println("Init OK. Scale ready!");
+        //Serial.println("Init OK. Scale ready!");
         delay(standard_delay);
         return false;
     }
