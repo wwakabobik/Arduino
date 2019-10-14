@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.7
+
 from datetime import datetime, date, time
 
 from flask import Flask, jsonify, request, abort
@@ -13,9 +15,9 @@ app = Flask(__name__)
 def store_in_db():
     if not request.json:
         abort(400)
-    timestamp = datetime.now()
+    timestamp = str(datetime.now())
     data = request.json.get('data', "")
-    db_data = f'{String(timestamp)}, {data}'
+    db_data = f'{timestamp} {data}'
     db_store_weather_data(db_data)
     return jsonify({'data': db_data}), 201
 
