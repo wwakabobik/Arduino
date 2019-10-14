@@ -1,10 +1,10 @@
 #!/usr/bin/env python3.7
 
-from datetime import datetime, date, time
+from datetime import datetime
 
 from flask import Flask, jsonify, request, abort
 
-from db.db import db_store_weather_data
+from db.db import db_store_weather_data, init_app
 from pages.index import index_page
 from pages.weather_station.dashboard import dashboard_page
 
@@ -17,13 +17,10 @@ def store_in_db():
         abort(400)
     timestamp = str(datetime.now())
     data = request.json.get('data', "")
-    db_data = f'{timestamp} {data}'
-    db_store_weather_data(db_data)
+    db_data = f'"{timestamp}", {data}'
+    ok=db_store_weather_data(db_data)
+    print(ok)
     return jsonify({'data': db_data}), 201
-
-
-if __name__ == '__main__':
-    app.run(debug=True, host='192.168.1.87', port='80')
 
 
 @app.route('/')
@@ -35,3 +32,9 @@ def index():
 @app.route('/dashboard')
 def dashboard():
     return dashboard_page()
+
+
+if __name__ == '__main__':
+    init_app(app)
+    app.run(debug=True)
+
