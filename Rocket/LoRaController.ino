@@ -1,3 +1,27 @@
+/* ***************************************************************************
+ * This sketch contains LoRa reciever logic                                  *
+ *                                                                           *
+ * Sketch uses Arduino UNO controller.                                       *
+ *                                                                           *
+ * Flight controller contains:                                               *
+ *    - Arduino UNO R3, piezo buzzer,                                        *
+ *      BMP180 barometer/thermometer, GY-NEO6MV3 GPS,                        *
+ *      7805 stabilizer, LED, SX1278 (Ra-02), LoRa module, 9v battery.       *
+ *                                                                           *
+ * Third-party libraries:                                                    *
+ *    - https://github.com/mikalhart/TinyGPS                                 *
+ *                                                                           *
+ * Logic:                                                                    *
+ *    1) Init all modules                                                    *
+ *    2) Wait until GPS starts and connection established;                   *
+ *    3) Print current position                                              *
+ *    4) Loop until LoRa packet from flight controller will be received      *
+ *    5) Print packet RSSI, beep                                             *
+ *    6) Go to 4                                                             *
+ *                                                                           *
+ * Sketch written by Iliya Vereshchagin 2018.                                *
+ *****************************************************************************/
+
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <LoRa.h>
