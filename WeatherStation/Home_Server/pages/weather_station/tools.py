@@ -24,9 +24,12 @@ def convert_param(param):
     if "_in" in param:
         meas_type = 0
         fparam = param[:-3]
-    elif "_out":
+    elif "_out" in param:
         meas_type = 1
         fparam = param[:-4]
+    else:
+        meas_type=0
+        fparam=param
     return fparam, meas_type
 
 
