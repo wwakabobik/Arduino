@@ -29,7 +29,7 @@ def get_one_measurement(param, offset, meas_type=''):
     return retval
 
 
-def get_last_series_average_measurement(param, period, meas_type=''):
+def get_one_last_average_measurement(param, period, meas_type=''):
     connection = get_db()
     if meas_type == 'temperature' or meas_type == 'humidity':
         criteria = f'WHERE meas_type = {meas_type}'
