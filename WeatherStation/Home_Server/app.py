@@ -9,6 +9,7 @@ from db.weather_station import store_weather_data
 from pages.index import index_page
 from pages.weather_station.dashboard import dashboard_page
 from pages.weather_station.single_page import single_page
+from pages.weather_station.single_data_page import single_data_page
 from pages.weather_station.compare_page import compare_page
 
 app = Flask(__name__)
@@ -40,7 +41,7 @@ def dashboard():
 @app.route('/single_page')
 def single():
     period = request.args.get('period')
-    param = request.args.get('type')
+    param = request.args.get('param')
     return single_page(param=param, period=period)
 
 
@@ -49,6 +50,13 @@ def single_via_post():
     period = request.form['period']
     param = request.form['param']
     return single_page(param=param, period=period)
+
+
+@app.route('/single_data_page')
+def single_data():
+    period = request.args.get('period')
+    param = request.args.get('param')
+    return single_data_page(param=param, period=period)
 
 
 @app.route('/compare_page', methods=['POST'])

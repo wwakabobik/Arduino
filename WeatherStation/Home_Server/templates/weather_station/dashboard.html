@@ -16,7 +16,7 @@
             </TR>
             <TR align="center">
                 <TD>
-                    <a href="single_page?type=temperature_in&period=day" style="font-size: 60px; text-decoration: none">{{temperature_in}}</a>
+                    <a href="single_page?param=temperature_in&period=day" style="font-size: 60px; text-decoration: none">{{temperature_in}}</a>
                     {% if temperature_in > prev_temperature_in %}
                     <IMG src="static/arrow_green.png" height="40" width="10" title="Five minutes ago was colder: {{ prev_temperature_in }}">
                     {% elif temperature_in < prev_temperature_in %}
@@ -42,7 +42,7 @@
                     {% endif %}
                 </TD>
                 <TD>
-                    <a href="single_page?type=temperature_out&period=day" style="font-size: 60px; text-decoration: none">{{temperature_out}}</a>
+                    <a href="single_page?param=temperature_out&period=day" style="font-size: 60px; text-decoration: none">{{temperature_out}}</a>
                     {% if temperature_out > prev_temperature_out %}
                     <IMG src="static/arrow_green.png" height="40" width="10" title="Five minutes ago was colder: {{ prev_temperature_out }}">
                     {% elif temperature_out < prev_temperature_out %}
@@ -76,7 +76,7 @@
             <TR align="center">
             <TR align="center">
                 <TD>
-                    <a href="single_page?type=humidity_in&period=day" style="font-size: 60px; text-decoration: none">{{humidity_in}}</a>
+                    <a href="single_page?param=humidity_in&period=day" style="font-size: 60px; text-decoration: none">{{humidity_in}}</a>
                     {% if humidity_in > prev_humidity_in %}
                     <IMG src="static/arrow_green.png" height="40" width="10" title="Five minutes ago was drier: {{ prev_humidity_in }}">
                     {% elif humidity_in < prev_humidity_in %}
@@ -102,7 +102,7 @@
                     {% endif %}
                 </TD>
                 <TD>
-                    <a href="single_page?type=humidity_out&period=day" style="font-size: 60px; text-decoration: none">{{humidity_out}}</a>
+                    <a href="single_page?param=humidity_out&period=day" style="font-size: 60px; text-decoration: none">{{humidity_out}}</a>
                     {% if humidity_out > prev_humidity_out %}
                     <IMG src="static/arrow_green.png" height="40" width="10" title="Five minutes ago was drier: {{ prev_humidity_out }}">
                     {% elif humidity_out < prev_humidity_out %}
@@ -133,7 +133,7 @@
             </TR>
             <TR align="center">
                 <TD colspan="2">
-                    <a href="single_page?type=pressure&period=day" style="font-size: 60px; text-decoration: none">{{pressure}}</a>
+                    <a href="single_page?param=pressure&period=day" style="font-size: 60px; text-decoration: none">{{pressure}}</a>
                     {% if pressure > prev_pressure %}
                     <IMG src="static/arrow_green.png" height="40" width="10" title="Five minutes pressure was lower: {{ prev_pressure }}">
                     {% elif pressure < prev_pressure %}
@@ -164,7 +164,7 @@
             </TR>
             <TR align="center">
                 <TD colspan="2">
-                    <a href="single_page?type=dew_point&period=day" style="font-size: 60px; text-decoration: none">{{dew_point}}</a>
+                    <a href="single_page?param=dew_point&period=day" style="font-size: 60px; text-decoration: none">{{dew_point}}</a>
                     {% if dew_point > prev_dew_point %}
                     <IMG src="static/arrow_green.png" height="40" width="10" title="Five minutes dew_point was lower: {{ prev_dew_point }}">
                     {% elif dew_point < prev_dew_point %}
