@@ -12,6 +12,7 @@ from pages.weather_station.single_page import single_page
 from pages.weather_station.single_data_page import single_data_page
 from pages.weather_station.compare_page import compare_page
 
+
 app = Flask(__name__)
 
 
