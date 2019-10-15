@@ -4,10 +4,12 @@ from datetime import datetime
 
 from flask import Flask, jsonify, request, abort
 
-from db.db import db_store_weather_data, init_app
+from db.db import init_app
+from db.weather_station import store_weather_data
 from pages.index import index_page
 from pages.weather_station.dashboard import dashboard_page
 from pages.weather_station.single_page import single_page
+from pages.weather_station.compare_page import compare_page
 
 app = Flask(__name__)
 
@@ -19,7 +21,7 @@ def store_in_db():
     timestamp = str(datetime.now())
     data = request.json.get('data', "")
     db_data = f'"{timestamp}", {data}'
-    ok=db_store_weather_data(db_data)
+    ok=store_weather_data(db_data)
     print(ok)
     return jsonify({'data': db_data}), 201
 
@@ -38,13 +40,25 @@ def dashboard():
 @app.route('/single_page')
 def single():
     period = request.args.get('period')
-    print(f"DEBUG: {period}")
     param = request.args.get('type')
-    print(f"DEBUG: {param}")
     return single_page(param=param, period=period)
+
+
+@app.route('/single_page', methods=['POST'])
+def single_via_post():
+    period = request.form['period']
+    param = request.form['param']
+    return single_page(param=param, period=period)
+
+
+@app.route('/compare_page', methods=['POST'])
+def compare():
+    period = request.form.get('period', None)
+    param1 = request.form.get('param1', None)
+    param2 = request.form.get('param2', None)
+    return compare_page(param1=param1, param2=param2, period=period)
 
 
 if __name__ == '__main__':
     init_app(app)
     app.run(debug=True)
-
