@@ -7,6 +7,7 @@ from flask import Flask, jsonify, request, abort
 from db.db import db_store_weather_data, init_app
 from pages.index import index_page
 from pages.weather_station.dashboard import dashboard_page
+from pages.weather_station.single_page import single_page
 
 app = Flask(__name__)
 
@@ -32,6 +33,15 @@ def index():
 @app.route('/dashboard')
 def dashboard():
     return dashboard_page()
+
+
+@app.route('/single_page')
+def single():
+    period = request.args.get('period')
+    print(f"DEBUG: {period}")
+    param = request.args.get('type')
+    print(f"DEBUG: {param}")
+    return single_page(param=param, period=period)
 
 
 if __name__ == '__main__':

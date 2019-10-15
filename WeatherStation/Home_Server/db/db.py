@@ -65,7 +65,6 @@ def db_get_weather_data_one_measurement(param, offset, meas_type=''):
     cur = connection.cursor()
     cur.execute(sql)
     row = cur.fetchone()
-    print(f'DEBUG: {cur.rowcount}')
     if cur.rowcount > 0:
         retval = dict(zip(row.keys(), row))[param]
     else:
@@ -80,7 +79,7 @@ def db_get_weather_data_average_measurement(param, period, meas_type=''):
     else:
         criteria = ''
     number = str(period / data_update_period)
-    sql = f''' avg({param}) from (SELECT param FROM weather_data ORDER BY RowId DESC {criteria} LIMIT {number}); '''
+    sql = f''' avg({param}) from (SELECT param FROM weather_data {criteria} ORDER BY RowId DESC  LIMIT {number}); '''
     cur = connection.cursor()
     cur.execute(sql)
     row = cur.fetchone()
@@ -91,13 +90,26 @@ def db_get_weather_data_average_measurement(param, period, meas_type=''):
     return retval
 
 
-def db_get_weather_data_series_measurement(param, meas_type=''):
+def db_get_weather_data_series_measurement(param, period, meas_type=''):
     connection = get_db()
     if param == 'temperature' or param == 'humidity':
         criteria = f'WHERE meas_type = {meas_type}'
-    number = str(60 / data_update_period)
-    sql = f''' SELECT ts, {param} FROM weather_data ORDER BY RowId DESC {criteria} LIMIT {number}; '''
+    else:
+        criteria = ''
+    number = int(period / data_update_period)
+    sql = f''' SELECT ts, {param} FROM weather_data {criteria} ORDER BY RowId DESC  LIMIT {number}; '''
     cur = connection.cursor()
     cur.execute(sql)
-    rows = cur.fetchall()
-    return dict(zip(rows.keys(), rows))
+
+    columns = [column[0] for column in cur.description]
+    results = []
+    for row in cur.fetchall():
+        results.append(dict(zip(columns, row)))
+    x = []
+    y = []
+    for result in results:
+        x.append(result['ts'])
+        y.append(result[param])
+    print(x)
+    print(y)
+    return x, y
