@@ -9,4 +9,3 @@ def single_page(param, period):
                            param=param,
                            period=period,
                            offline_fig=offline_fig)
-
