@@ -3,10 +3,9 @@
  *                                                                           *
  * Sketch uses Arduino UNO controller.                                       *
  *                                                                           *
- * Flight controller contains:                                               *
- *    - Arduino UNO R3, piezo buzzer,                                        *
- *      BMP180 barometer/thermometer, GY-NEO6MV3 GPS,                        *
- *      7805 stabilizer, LED, SX1278 (Ra-02), LoRa module, 9v battery.       *
+ * Reciever contains:                                                        *
+ *    - Arduino UNO R3, piezo buzzer, GY-NEO6MV3 GPS,                        *
+ *      7805 stabilizer, SX1278 (Ra-02) LoRa module.                         *
  *                                                                           *
  * Third-party libraries:                                                    *
  *    - https://github.com/mikalhart/TinyGPS                                 *
