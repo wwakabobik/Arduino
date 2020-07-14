@@ -1,21 +1,26 @@
 /* ***************************************************************************
  * This sketch contains logic of tranciever for ignitor                      *
  *                                                                           *
- * Sketch uses Arduino Nano controller, NRF24L01 module                      *
+ * Sketch uses Arduino Nano controller, NRF24L01 module.                     *
+ * As alternative, I added LoRA module option and RF433 support              *
  *                                                                           *
  * Third-party libraries:                                                    *
  *  - https://github.com/oevsegneev/arduino-dev/tree/master/libs/SerialFlow  *
+ *  - http://www.airspayce.com/mikem/arduino/RadioHead/RadioHead-1.41.zip    *
  *                                                                           *
  * Logic:                                                                    *
- *    1) Init LED, button and Wi-fi                                                  *
+ *    1) Init LED, button and Wi-fi (RF433, LoRA)                            *
  *    2) Wait for button press                                               *
  *    3) If button is pressed, send maic keyword three times                 *
  *    4) Delay while ignition initiated                                      *
  *                                                                           *
- * Sketch written by Iliya Vereshchagin 2018.                                *
+ * Sketch written by Iliya Vereshchagin 2018. Upated 2020                    *
  *****************************************************************************/
 
-#include <SerialFlow.h>
+#include <SerialFlow.h>  // for NRF24K01
+#include <RH_ASK.h>      // for RF433
+#include <SPI.h>         // for RF433
+#include <LoRa.h>        // for LoRA
 
 // pin const
 const int ledPin = 5;
@@ -30,6 +35,9 @@ const int magic_word = 4242;
 
 // serial flow settings
 SerialFlow rd(9,10);
+
+// RF433
+RH_ASK RF_driver;
  
 void setup()
 {
@@ -38,6 +46,7 @@ void setup()
     initPins();
     delay(startup_delay);
     initWiFi();
+    initLoRa();
     delay(startup_delay);
     //start wait for signal
     turnLEDOn();
@@ -100,17 +109,33 @@ void sendMessage()
 
 void sendPacket()
 {
-  Serial.println("Encoding packet");
-  rd.setPacketValue( magic_word );
-  Serial.println("Sending, try 1...");
-  rd.sendPacket();
-  delay(resend_delay);
-  Serial.println("Sending, try 2...");
-  rd.sendPacket();
-  delay(resend_delay);
-  Serial.println("Sending, try 3...");
-  rd.sendPacket();
+    Serial.println("Encoding packet");
+    rd.setPacketValue(magic_word);
+    Serial.println("Sending, try 1...");
+    rd.sendPacket(); // send via WiFi
+    RF_driver.send(magic_word, 1);  // send via RF433
+    RF_driver.waitPacketSent();  // wait until packet sent
+    LoRa.beginPacket();  // start LoRA
+    LoRa.print(magic_word);  // send magic word
+    LoRa.endPacket();  // stop LoRA
+    delay(resend_delay);
+    Serial.println("Sending, try 2...");
+    rd.sendPacket(); // send via WiFi
+    RF_driver.send(magic_word, 1);  // send via RF433
+    RF_driver.waitPacketSent();  // wait until packet sent
+    LoRa.beginPacket();  // start LoRA
+    LoRa.print(magic_word);  // send magic word
+    LoRa.endPacket();  // stop LoRA
+    delay(resend_delay);
+    Serial.println("Sending, try 3...");
+    rd.sendPacket(); // send via WiFi
+    RF_driver.send(magic_word, 1);  // send via RF433
+    RF_driver.waitPacketSent();  // wait until packet sent
+    LoRa.beginPacket();  // start LoRA
+    LoRa.print(magic_word);  // send magic word
+    LoRa.endPacket();  // stop LoRA
 }
+
 
 void initPins()
 {
@@ -130,4 +155,16 @@ void initWiFi()
     rd.setPacketFormat(2, 1);
     rd.begin(0xF0F0F0F0D2LL,0xF0F0F0F0E1LL);    
 }
-
+
+void initLoRa()
+{
+    if (!LoRa.begin(433E6))
+    {
+      Serial.println("Starting LoRa failed!");
+      //stop();  // uncomment if needed
+    }
+    LoRa.setTxPower(20);
+    Serial.println("LoRa started!");  
+}
+
+
