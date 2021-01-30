@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.7
 
+
 from datetime import datetime
 
 from flask import Flask, jsonify, request, abort
@@ -13,7 +14,7 @@ from pages.weather_station.single_data_page import single_data_page
 from pages.weather_station.compare_page import compare_page
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 
 
 @app.route('/api/v1/add_weather_data', methods=['POST'])
@@ -24,7 +25,6 @@ def store_in_db():
     data = request.json.get('data', "")
     db_data = f'"{timestamp}", {data}'
     ok=store_weather_data(db_data)
-    print(ok)
     return jsonify({'data': db_data}), 201
 
 
@@ -70,4 +70,4 @@ def compare():
 
 if __name__ == '__main__':
     init_app(app)
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port='80')
