@@ -11,6 +11,8 @@ def convert_period(period):
         num_period = int(60);
     elif period == "day":
         num_period = int(60 * 24)
+    elif period == "week":
+        num_period = int(60 * 24 * 7)
     elif period == "month":
         num_period = int(60 * 24 * 30)
     elif period == "year":

@@ -1,4 +1,4 @@
-from db.db import get_db
+from db.db import get_db, close_db
 
 data_update_period = 5
 
@@ -9,33 +9,28 @@ def store_weather_data(data):
     cur = connection.cursor()
     cur.execute(sql)
     connection.commit()
+    close_db()
     return cur.lastrowid
 
 
-def get_one_measurement(param, offset, meas_type=''):
+def get_one_measurement(param, offset, meas_type):
     connection = get_db()
-    if meas_type == 'temperature' or meas_type == 'humidity':
-        criteria = f'WHERE meas_type = {meas_type}'
-    else:
-        criteria = ''
-    sql = f''' SELECT {param} FROM weather_data ORDER BY RowId DESC {criteria} LIMIT 1 OFFSET {offset}; '''
+    criteria = f'WHERE meas_type = \'{meas_type}\''
+    sql = f''' SELECT {param} FROM weather_data {criteria} ORDER BY RowId DESC LIMIT 2 OFFSET {offset}; '''
     cur = connection.cursor()
     cur.execute(sql)
     row = cur.fetchone()
-    if cur.rowcount > 0:
+    if row:
         retval = dict(zip(row.keys(), row))[param]
     else:
         retval = 0
     return retval
 
 
-def get_one_last_average_measurement(param, period, meas_type=''):
+def get_one_last_average_measurement(param, period, meas_type):
     connection = get_db()
-    if meas_type == 'temperature' or meas_type == 'humidity':
-        criteria = f'WHERE meas_type = {meas_type}'
-    else:
-        criteria = ''
-    number = str(period / data_update_period)
+    criteria = f'WHERE meas_type = {meas_type}'
+    number = str(2 + (period / data_update_period))
     sql = f''' avg({param}) from (SELECT param FROM weather_data {criteria} ORDER BY RowId DESC  LIMIT {number}); '''
     cur = connection.cursor()
     cur.execute(sql)
@@ -47,12 +42,9 @@ def get_one_last_average_measurement(param, period, meas_type=''):
     return retval
 
 
-def get_last_series_measurement(param, period, meas_type=''):
+def get_last_series_measurement(param, period, meas_type):
     connection = get_db()
-    if param == 'temperature' or param == 'humidity':
-        criteria = f'WHERE meas_type = {meas_type}'
-    else:
-        criteria = ''
+    criteria = f'WHERE meas_type = {meas_type}'
     number = int(period / data_update_period)
     sql = f''' SELECT ts, {param} FROM weather_data {criteria} ORDER BY RowId DESC  LIMIT {number}; '''
     cur = connection.cursor()

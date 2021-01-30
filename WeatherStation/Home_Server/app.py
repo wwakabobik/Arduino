@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.7
 
-
 from datetime import datetime
 
 from flask import Flask, jsonify, request, abort
@@ -24,7 +23,8 @@ def store_in_db():
     timestamp = str(datetime.now())
     data = request.json.get('data', "")
     db_data = f'"{timestamp}", {data}'
-    ok=store_weather_data(db_data)
+    ok = store_weather_data(db_data)
+    print(ok)
     return jsonify({'data': db_data}), 201
 
 
