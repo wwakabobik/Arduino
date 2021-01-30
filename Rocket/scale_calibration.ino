@@ -16,7 +16,7 @@
 #include <HX711.h>
 
 HX711 scale;
-unsigned int weight_of_standard = 457;  // set your own standard ethalon
+unsigned int weight_of_standard = 584;  // set your own standard ethalon
 
 void setup()
 {
@@ -47,5 +47,5 @@ void correction()
     float calibration_factor=scale.get_units(10)/weight_of_standard;
     Serial.println(String(calibration_factor));
     scale.set_scale(calibration_factor);
-    delay(10000);
+    delay(1000);
 }
