@@ -2,12 +2,12 @@ from flask import render_template
 from wunderground_pws import WUndergroundAPI, units
 
 from db.weather_station import get_one_measurement, data_update_period, get_last_measurement_pack
+from secure_data import wu_api_key, wu_reference_station_id
 
-api_key = 'd2b79805ff4c4717b79805ff4c1717d5'
-cur_location = 'Domodedovo (Domodedovo), RU'
+
 wu = WUndergroundAPI(
-    api_key=api_key,
-    default_station_id='IDOMOD6',
+    api_key=wu_api_key,
+    default_station_id=wu_reference_station_id,
     units=units.METRIC_SI_UNITS,
 )
 

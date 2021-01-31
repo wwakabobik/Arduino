@@ -11,6 +11,7 @@ from pages.weather_station.dashboard import dashboard_page
 from pages.weather_station.single_page import single_page
 from pages.weather_station.single_data_page import single_data_page
 from pages.weather_station.compare_page import compare_page
+from pages.weather_station.send_data import send_data_to_wu
 
 
 app = Flask(__name__, template_folder='templates')
@@ -23,9 +24,13 @@ def store_in_db():
     timestamp = str(datetime.now())
     data = request.json.get('data', "")
     db_data = f'"{timestamp}", {data}'
-    ok = store_weather_data(db_data)
-    print(ok)
+    store_weather_data(db_data)
     return jsonify({'data': db_data}), 201
+
+
+@app.route('/send_data')
+def send_weather_data():
+    return send_data()
 
 
 @app.route('/')
