@@ -30,7 +30,7 @@ def store_in_db():
 
 @app.route('/send_data')
 def send_weather_data():
-    return send_data()
+    return send_data_to_wu()
 
 
 @app.route('/')
