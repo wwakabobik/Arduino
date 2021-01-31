@@ -27,6 +27,20 @@ def get_one_measurement(param, offset, meas_type):
     return retval
 
 
+def get_last_measurement_pack(offset, meas_type):
+    connection = get_db()
+    criteria = f'WHERE meas_type = \'{meas_type}\''
+    sql = f''' SELECT * FROM weather_data {criteria} ORDER BY RowId DESC LIMIT 2 OFFSET {offset}; '''
+    cur = connection.cursor()
+    cur.execute(sql)
+    row = cur.fetchone()
+    if row:
+        retval = dict(zip(row.keys(), row))
+    else:
+        retval = 0
+    return retval
+
+
 def get_one_last_average_measurement(param, period, meas_type):
     connection = get_db()
     criteria = f'WHERE meas_type = {meas_type}'

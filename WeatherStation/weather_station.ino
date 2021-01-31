@@ -6,220 +6,243 @@
  * free and debug serial output is commented-out in this sketch.             *
  *                                                                           *
  * Flight controller contains:                                               *
- *    - Arduino Nano v3 (CH340g), AHT10 humidity sensor, AC-DC supply unit,  *
- *      BMP180 barometer/thermometer, SD card module, DC-DC Low Voltage (4V) *
- *      WAVGAT SIM900A GSM module, 7805 stabilizer, LED, 2x18650,            *
+ *    - ESP8266 (CH340g with WiFI), AC-DC supply unit,                       *
+ *      BME280 barometer/thermometer/hydrometer.                             *
  *                                                                           *
- * Third-party libraries:                                                    *
- *    - https://github.com/Thinary/AHT10                                     *
  *                                                                           *
  * Logic:                                                                    *
- *    1) Init all modules                                                    *
- *    2) Wait until GSM/GPRS connection established                          *
+ *    1) Init BME280 sensor                                                  *
+ *    2) Wait for WiFi connection established                                *
  *    3) Start looping:                                                      *
- *       a) Get data from internal (or external) sensors                     *
- *       b) Send data via GPRS as REST POST request                          *
- *       c) Wait for next data obtaning window (1-5 min)                     *
- *       d) Switch sensor type (external\internal), go to "a"                * 
+ *       a) Check WiFi status, reconnect if needed                           *
+ *       b) Get data from sensor                                             *
+ *       c) Connect to server via REST JSON API                              *
+ *       d) Send packet                                                      *
+ *       e) Wait cooldown, go to "a"                                         *
  *                                                                           *
- * Sketch written by Iliya Vereshchagin 2019.                                *
+ * Sketch written by Iliya Vereshchagin 2021.                                *
  *****************************************************************************/
 
+#define DEBUG
+
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 #include <Wire.h>
-#include <GSM.h>
-#include <Adafruit_BMP085.h>
-#include <Thinary_AHT10.h>
+#include <SPI.h>
+#include <Adafruit_BME280.h>
+#include <Arduino_JSON.h>
 
-// Delay globals
-const long cycle_delay = 300000;
 
-// BMP180 globals
-Adafruit_BMP085 barometer_internal;
-Adafruit_BMP085 barometer_external;
-#define TCAADDR 0x70
+// Sensor globals
+Adafruit_BME280 bme; // use I2C interface
+Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
+Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
+Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();
+float correction_temperature = -1.5;  // calibration addition for temperature
+float correction_pressure = 14;       // calibration addition for pressure
+float correction_humidity = 0;        // calibration addition for humidity
 
-// AHT10 globals
-AHT10Class AHT10_internal;
-AHT10Class AHT10_external;
 
-// GSM globals
-char PINNUMBER[]="";
-char GPRS_APN[]="GPRS_APN"; // replace your GPRS APN
-char GPRS_LOGIN[]="login";    // replace with your GPRS login
-char GPRS_PASSWORD[]="password"; // replace with your GPRS password
-GSMClient client;
-GPRS gprs;
-GSM gsmAccess;
-char server[] = "my.ip.address.here";
-int port = 80; 
-char endpoint[] = "/YOUR/REST/POST";
+// Format consts
+String delimiter = ",";
 
-// Power monitor PINNUMBER
-const int POWER_PIN=10;
 
-// Internal/External switch
-bool is_external;
+// Device ID
+const String DEVICE_ID = "1";  // 0 is internal, 1 is external sensor
 
-// multiplexor selector for BMP180
-void tcaselect(uint8_t i) 
+// Wifi
+const char* wifi_ssid = "YOUR_SSID";
+const char* wifi_password = "YOUR_PASSWORD";
+
+// API
+const String ip_address = "YOUR_IP_OF_SERVER";
+const String port = "YOUR_PORT";
+const String api_endpoint = "/api/v1/add_weather_data";
+const String api_url = "http://" + ip_address + ":" + port + api_endpoint;
+const int max_retries = 5;  // number of retries to send packet
+
+// Packet send cooldown
+const long cooldown = 300000;
+
+
+void setup()
 {
-    if (i > 7)
+     Serial.begin(115200);
+     Serial.println("Started init");
+     init_BME();
+     init_WiFi();
+}
+
+void loop()
+{
+    #ifdef DEBUG
+    get_serial_data();
+    #endif
+    post_data();
+    delay(cooldown);
+}
+
+/* Init functions */
+void init_WiFi()
+{
+    connect_to_WiFi();
+    #ifdef DEBUG
+    Serial.println("Init WiFi OK");
+    #endif
+}
+
+void init_BME()
+{
+    if (!bme.begin())
     {
-        return;
+        Serial.println(F("Could not find a valid BME280 sensor, check wiring!"));
+        while (1) delay(10);
     }
-    Wire.beginTransmission(TCAADDR);
-    Wire.write(1 << i);
-    Wire.endTransmission();
+
+    #ifdef DEBUG
+    Serial.println("Init BME280 OK");
+    bme_temp->printSensorDetails();
+    bme_pressure->printSensorDetails();
+    bme_humidity->printSensorDetails();
+    #endif
 }
 
 
-// Init functions
-
-void initBarometer()
+#ifdef ODISPLAY
+void init_oled()
 {
-    tcaselect(0);
-    barometer_internal.begin();
-    tcaselect(1);
-    barometer_external.begin();
+    myOLED.begin();
+    myOLED.setFont(SmallFont);
+    Serial.println("OLED initialized");
+}
+#endif
+
+
+/* WiFi functions */
+
+void connect_to_WiFi()
+{
+   #ifdef DEBUG
+   Serial.println("Connecting to " + String(wifi_ssid));
+   #endif
+   WiFi.mode(WIFI_STA);
+   WiFi.begin(wifi_ssid, wifi_password);
+   while (WiFi.status() != WL_CONNECTED)
+   {
+      delay(500);
+   }
+   #ifdef DEBUG
+   Serial.println("WiFi connected");
+   Serial.print("IP address: ");
+   Serial.println(WiFi.localIP());
+   #endif
 }
 
-void initHumidSensor()
+void check_connection()
 {
-    Wire.begin();
-    if (AHT10_internal.begin(eAHT10Address_Low) && AHT10_external.begin(eAHT10Address_High))
+    if (WiFi.status() != WL_CONNECTED)
     {
-        Serial.println("Init AHT10 Sucess.");
+        #ifdef DEBUG
+        Serial.println("Network disconnected");
+        #endif
+        connect_to_WiFi();
     }
     else
     {
-        Serial.println("Init AHT10 Failure.");
-        while(true);
-    }  
+        #ifdef DEBUG
+        Serial.println("Network stable");
+        #endif
+    }
 }
 
-void initGSM()
+
+void post_data()
 {
-    bool notConnected = true;
-    while (notConnected) 
+    check_connection();
+
+    #ifdef DEBUG
+    Serial.println("Sending POST data to server");
+    #endif
+    HTTPClient http;    //Declare object of class HTTPClient
+
+    String content = get_csv_data();
+    int http_code = 404;
+    int retries = 0;
+    while (http_code != 201)
     {
-        if ((gsmAccess.begin(PINNUMBER) == GSM_READY) & (gprs.attachGPRS(GPRS_APN, GPRS_LOGIN, GPRS_PASSWORD) == GPRS_READY)) 
+        http.begin(api_url); // connect to request destination
+        http.addHeader("Content-Type", "application/json");        // set content-type header
+        http_code = http.POST("{\"data\": \"" + content +"\"}");   // send the request
+        #ifdef DEBUG
+        String payload = http.getString();                         // get response payload
+        #endif DEBUG
+        http.end();                                                // close connection
+
+        #ifdef DEBUG
+        Serial.println(http_code);  //Print HTTP return code
+        Serial.println(payload);    //Print request response payload
+        #endif
+
+        retries++;
+        if (retries > max_retries)
         {
-            notConnected = false;
-        } 
-        else 
-        {
-            Serial.println("Not connected");
-            delay(1000);
+            break;
+            #ifdef DEBUG
+            Serial.println("Package lost!");
+            #endif
         }
     }
 }
 
-void initPowerPin()
+/* BME functions */
+
+float get_temperature()
 {
-	pinMode(POWER_PIN, INPUT);
+    sensors_event_t temp_event, pressure_event, humidity_event;
+    bme_temp->getEvent(&temp_event);
+    bme_pressure->getEvent(&pressure_event);
+    bme_humidity->getEvent(&humidity_event);
+    return temp_event.temperature + correction_temperature;
 }
 
-
-// Get functions
-
-double getTemperature(bool external)
+float get_pressure()
 {
-    double temperature;
-    if (external)
-    {
-        tcaselect(1);
-        temperature = (barometer_external.readTemperature() + AHT10_external.GetTemperature())/2.0;
-    }
-    else
-    {
-        tcaselect(0);
-        temperature = (barometer_internal.readTemperature() + AHT10_internal.GetTemperature())/2.0;
-    }
-    return temperature;
+    sensors_event_t pressure_event;
+    bme_pressure->getEvent(&pressure_event);
+    return (pressure_event.pressure/1.3333 + correction_pressure);
 }
 
-double getPressure(bool external)
+float get_humidity()
 {
-    double pressure;
-    if (external)
-    {
-        tcaselect(1);
-        pressure = barometer_external.readPressure()/133.322;
-    }
-    else
-    {
-        tcaselect(0);
-        pressure = barometer_internal.readPressure()/133.322;
-    }
-    return pressure;
+    sensors_event_t humidity_event;
+    bme_humidity->getEvent(&humidity_event);
+    return humidity_event.relative_humidity + correction_humidity;
 }
 
-double getHumidity(bool external)
+float get_dew_point()
 {
-    double humidity;
-    if (external)
-    {
-        humidity = AHT10_external.GetHumidity();
-    }
-    else
-    {
-        humidity = AHT10_internal.GetHumidity(); 
-    }
-    return humidity;
+    float dew_point;
+    dew_point = get_temperature() - (((float)1.0 - (get_humidity()/(float)100.00))/(float)0.05);
+    return dew_point;
 }
 
-double getDewPoint()
+/* Format functions */
+
+String get_csv_data()
 {
-    return AHT10_external.GetDewPoint();
+    String ret_string = DEVICE_ID;
+    ret_string += delimiter + String(get_temperature());
+    ret_string += delimiter + String(get_humidity());
+    ret_string += delimiter + String(get_pressure());
+    ret_string += delimiter + String(get_dew_point());
+    return ret_string;
 }
 
-// GSM functions
-
-void sendDataViaGPRS(String data)  // TODO: REWORK TO API
+#ifdef DEBUG
+void get_serial_data()
 {
-    if (client.connect(server, port)) 
-    {
-        Serial.println("Sending data: " + data);
-        // Make a HTTP request:
-        client.print("GET ");
-        client.print(endpoint);
-        client.println(" HTTP/1.1");
-        client.print("Host: ");
-        client.println(server);
-        client.println("Connection: close");
-        client.println();
-    } 
-    else 
-    {
-        // if you didn't get a connection to the server:
-        Serial.println("connection failed");
-    }
+    String ret_string = "Temperature: " + String(get_temperature()) + " *C\nHumidity: " + String(get_humidity());
+    ret_string += " %\nPressure: " + String(get_pressure()) + " mmhg\nDew point: " + get_dew_point() + " *C\n";
+    Serial.println(ret_string);
 }
-
-void sendPowerLossState()
-{
-		// TODO
-}
-
-void setup()
-{
-    Serial.begin(9600);
-    delay(10);
-	initPowerPin();
-    initBarometer();
-    initHumidSensor();
-	intGSM();
-}
-
-void loop()
-{   
-    is_external = !is_external;
-    String data_string = String(is_external) + "," + String(getTemperature(is_external)) + "," + String(getPressure(is_external)) + "," + String(getHumidity(is_external)) + "," + String(getDewPoint());
-    sendDataViaGPRS(data_string);
-	if (digitalRead(POWER_PIN)==LOW)
-	{
-		sendPowerLossState();
-	}
-    delay(cycle_delay);
-}
-
+#endif
