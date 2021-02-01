@@ -221,9 +221,12 @@ float get_humidity()
 
 float get_dew_point()
 {
-    float dew_point;
-    dew_point = get_temperature() - (((float)1.0 - (get_humidity()/(float)100.00))/(float)0.05);
-    return dew_point;
+    float dp;
+    float t = get_temperature();
+    float h = get_humidity();
+    dp = (t-(14.55+0.114*t)*(1-(0.01*h))-pow(((2.5+0.007*t)*(1-(0.01*h))),3)-(15.9+0.117*t)*pow((1-(0.01*h)), 14));
+
+    return dp;
 }
 
 /* Format functions */
