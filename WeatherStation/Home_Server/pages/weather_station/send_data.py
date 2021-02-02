@@ -52,4 +52,3 @@ def send_data_to_ow(data):
                                                                                 hum=data['humidity'])),
                                     humidex=humidex(t=data['temperature'], d=data['dew_point']))
     return response
-
